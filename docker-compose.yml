@@ -1,0 +1,49 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: dockerfile
+    container_name: service-segment
+    ports:
+      - "${PORT}:${PORT}"
+    environment:
+      ENV: docker
+      PORT: ${PORT}
+      POSTGRES_STRING_DOCKER: ${POSTGRES_STRING_DOCKER}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+
+  postgres:
+    image: postgres:18-alpine
+    container_name: postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "${POSTGRES_PORT}:${POSTGRES_PORT}"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 7
+
+  migrate:
+    image: migrate/migrate
+    container_name: migrate
+    command: ["-path", "./migrations", "-database", "${POSTGRES_STRING_DOCKER}", "up"]
+    volumes: 
+      - ./migrations:/migrations
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+
+volumes:
+  postgres_data:
+    
+    
